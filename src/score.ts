@@ -1,69 +1,64 @@
-class Score {
-    constructor() {
-
-    }
-
-    //Points
-    //arrayOfPlayerMatchResult = [0, 1, 2]
-    //0 lose
-    //1 drawing
-    //2 win
-    //3 by
-    //4 drop
-    computePoints() {
-    }
-
-    //OMW%
-    // 01: 0, 2, 2 
-    // 02: 1, 1, 0
-    // 03: 2, 0, 2
-    computeOpponentsMatchWinRatePercent() {
-
-        //if < 33.333 return 33.33333
-    }
-
-    //GW%
-    computeGameWinPercent() {
-
-    }
-
-    //OGW%
-    computeOpponentsGameWinPercent() {
-
-    }
-
-    //Player
-    //create table player( id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, nickname VARCHAR(50) NOT NULL);
-
-    //Tournament:
-    // TournamedID | Name | TotalPlayer
-    /*
-    create table tournament( id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50) NOT NULL);
-    */
-
-    //Tournament Player:
-    //  PlayerID | TournamentID
-    //create table tournament_player( id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, name VARCHAR(50) NOT NULL,);
-
-
-    //Pairing
-    //  PairingID | TournamentID | Round | PlayerID 1 |  PlayerID 2 
-
-    //Match 
-    //  MatchID | PairingID | PlayerID | Result | GameWin | GameLoss | Bye
-
-    //Standings
-    //  ID | TournamentID | PlayerID | Score | OpponentsMatchWin | PlayerGameWin | OpponentsGameLoss 
-
-    /**
-     * Finally, what’s the influence of a bye on the tiebreakers? 
-     * It is none. The program, while computing the average of your opponents match-winning percentages, 
-     * will have one less value to consider: if you received a bye during the first round of a 6 round tournament, 
-     * the program will simply mean over 5 values instead of 6. 
-     * However, if you look at the standings after the first round, you’ll see the player with the bye having a tiebreaker of 100% 
-     * (you’ll notice it, since all the other players with 3 points will have a tiebreaker of 33%): 
-     * this is not his/her real tiebreaker, this is only a default value that is used because the program cannot compute the mean of 0 numbers.
-     */
+export interface MatchGamesResult {
+    hasPlayerMatchedWithBye: boolean,
+    playerGameWin: number,
+    opponentGameWin: number
 }
 
-enum MatchResult { lose, tie, win };
+enum MatchResult { win, lose, tie };
+
+export const minimumPercentage = 33.333333;
+const resultPrecision = 6;
+
+export class Score {
+    static computePlayerPoints(matchGamesResult: MatchGamesResult[]): number {
+        return matchGamesResult.reduce((partialScore, mR) => {
+            const matchResult: MatchResult = this.getMatchResult(mR);
+            switch (matchResult) {
+                case MatchResult.win: return partialScore + 3;
+                case MatchResult.lose: return partialScore;
+                case MatchResult.tie: return partialScore + 1;
+            }
+        }, 0);
+    }
+
+    //MW% (Each opponent's match win percentage added together / number of opponents). 
+    // - Opponents cannot have a match win percentage lower than 33%. 
+    static computePlayerMatchWinRatePercentage(matchGamesResult: MatchGamesResult[]) {
+        if (!matchGamesResult.length) return 0;
+        const playerTotalMatchWin = matchGamesResult.filter(mR => this.getMatchResult(mR) == MatchResult.win).length;
+        const playerTotalMatch = matchGamesResult.filter(mR => mR.hasPlayerMatchedWithBye == false).length;
+        if (!playerTotalMatch) return 0;
+        if (!playerTotalMatchWin) return minimumPercentage;
+        const result = +((playerTotalMatchWin / playerTotalMatch) * 100).toFixed(resultPrecision);
+        return result < minimumPercentage ? minimumPercentage : result;
+    }
+
+    //GW% (Games won / Games played). 
+    //A player in a five-round Swiss tournamentplayerGameWin who went 2-0, 2-1, 1-2, 2-0, 2-1, would have a GW% of 69.23%. 
+    static computePlayerGameWinPercentage(matchGamesResult: MatchGamesResult[]) {
+        if (!matchGamesResult.length) return 0;
+
+        const totalGameWinByPlayer = matchGamesResult.reduce((sum, matchResult) =>
+            sum = matchResult.hasPlayerMatchedWithBye ?
+                sum :
+                sum + matchResult.playerGameWin, 0);
+
+        const totalGamePlayed = matchGamesResult.reduce((sum, matchResult) =>
+            sum = matchResult.hasPlayerMatchedWithBye ?
+                sum :
+                sum + matchResult.playerGameWin + matchResult.opponentGameWin, 0);
+
+        if (!totalGamePlayed) return 0;
+        const result = +(totalGameWinByPlayer / totalGamePlayed).toFixed(resultPrecision);
+        return result < minimumPercentage ? minimumPercentage : result;
+    }
+
+    private static getMatchResult(matchGamesResult: MatchGamesResult): MatchResult {
+        if (matchGamesResult.playerGameWin > matchGamesResult.opponentGameWin || matchGamesResult.hasPlayerMatchedWithBye)
+            return MatchResult.win;
+        else if (matchGamesResult.playerGameWin < matchGamesResult.opponentGameWin)
+            return MatchResult.lose;
+        else
+            return MatchResult.tie;
+    }
+}
