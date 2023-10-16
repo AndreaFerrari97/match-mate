@@ -1,17 +1,13 @@
-FROM node:19-alpine
+FROM node:14
 
-# Set the working directory to /app
 WORKDIR /app
 
-# Copy the package.json and package-lock.json files to the container
 COPY package*.json ./
 
-RUN npm install \
-        && npm install typescript -g
+RUN npm install
 
-# Copy the entire directory to the container
 COPY . .
 
-RUN tsc
+RUN npm run build
 
-CMD ["node", "./dist/server.js"]
+CMD ["npm", "start"]
