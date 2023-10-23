@@ -1,1 +1,0 @@
-export function isStringValidNumber(value: string): boolean { return !isNaN(parseFloat(value)) }

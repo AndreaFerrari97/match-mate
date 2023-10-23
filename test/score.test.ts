@@ -1,4 +1,4 @@
-import { Score, MatchGamesResult, minimumPercentage } from '../src/score'
+import { Score, MatchGamesResult, minimumPercentage } from '../src/services/score.service'
 const playerWin = {
     hasPlayerMatchedWithBye: false,
     playerGameWin: 2,
